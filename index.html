@@ -300,43 +300,15 @@
       
         
           
-            <h2 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h2><p>Prometheus受启发于Google的Brogmon监控系统（相似的Kubernetes是从Google的Brog系统演变而来），从2012年开始由前Google工程师在Soundcloud以开源软件的形式进行研发，并且于2015年早期对外发布早期版本。2016年5月继Kubernetes之后成为第二个正式加入CNCF基金会的项目，同年6月正式发布1.0版本。2017年底发布了基于全新存储层的2.0版本，能更好地与容器平台、云平台配合。</p>
-<h2 id="对比传统监控prometheus优势"><a href="#对比传统监控prometheus优势" class="headerlink" title="对比传统监控prometheus优势"></a>对比传统监控prometheus优势</h2><ol>
-<li><strong>趋于预测分析：</strong>prometheus通过对监控数据持续采集及统计，对监控指标进行长期的趋势分析，例如，通过对cpu的使用率来预测在未来的某一个时间段对资源进行扩容。</li>
-<li><strong>对照分析：</strong>两个版本的系统运行资源使用情况的差异如何？在不同容量情况下系统的并发和负载变化如何？通过监控能够方便的对系统进行跟踪和比较。</li>
-<li><strong>部署更加轻量化：</strong>(这里只针对物理机节点部署)Prometheus基于Golang编写，编译后的软件包，不依赖于任何的第三方依赖，易于管理。用户只需要下载对应平台的二进制包，解压并且添加基本的配置即可正常启动。</li>
-<li><strong>监控服务内部状态：</strong>Pometheus鼓励用户监控服务的内部状态，基于Prometheus丰富的Client库，用户可以轻松的在应用程序中添加对Prometheus的支持，从而让用户可以获取服务和应用内部真正的运行状态。</li>
-<li><strong>查询语言PromQL：</strong>Prometheus内置了一个强大的数据查询语言PromQL。 通过PromQL可以实现对监控数据的查询、聚合。同时PromQL也被应用于数据可视化(如Grafana)以及告警当中。</li>
-<li><strong>可扩展性：</strong>Prometheus是如此简单，因此你可以在每个数据中心、每个团队运行独立的Prometheus Sevrer。Prometheus对于联邦集群的支持，可以让多个Prometheus实例产生一个逻辑集群，当单实例Prometheus Server处理的任务量过大时，通过使用功能分区(sharding)+联邦集群(federation)可以对其进行扩展。</li>
-<li><strong>易于集成：</strong>prometheus提供大量的第三方实现的监控数据采集及支持：JMX， CloudWatch， EC2， MySQL， PostgresSQL， Haskell， Bash， SNMP， Consul， Haproxy， Mesos， Bind， CouchDB， Django， Memcached， RabbitMQ， Redis， RethinkDB， Rsyslog等等，同时prometheus还支持与其他监控系统集成，zabbix，Graphite， Statsd， Collected， Scollector， muini， Nagios等。</li>
-</ol>
-<h1 id="部署Prometheus-Server"><a href="#部署Prometheus-Server" class="headerlink" title="部署Prometheus Server"></a>部署Prometheus Server</h1><ul>
-<li><strong>二进制安装部署方法</strong><br><a href="https://prometheus.io/download/找到最新版本的Prometheus" target="_blank" rel="noopener">https://prometheus.io/download/找到最新版本的Prometheus</a> Sevrer软件包<br>下载并解压包<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">wget https://github.com/prometheus/prometheus/releases/download/v2.11.0-rc.0/prometheus-2.11.0-rc.0.linux-amd64.tar.gz</span><br><span class="line">tar xf prometheus-2.11.0-rc.0.linux-amd64.tar.gz</span><br></pre></td></tr></table></figure>
-
-</li>
-</ul>
-<p>解压后目录下会包含Prometheus的配置文件<code>prometheus.yml</code></p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">cat prometheus.yml</span><br><span class="line"># my global config</span><br><span class="line">global:</span><br><span class="line">  scrape_interval: 15s # Set the scrape interval to every 15 seconds. Default is every 1 minute.</span><br><span class="line">  evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.</span><br><span class="line">  # scrape_timeout is set to the global default (10s).</span><br><span class="line"></span><br><span class="line"># Alertmanager configuration</span><br><span class="line">alerting:</span><br><span class="line">  alertmanagers:</span><br><span class="line">  - static_configs:</span><br><span class="line">    - targets:</span><br><span class="line">      # - alertmanager:9093</span><br><span class="line"></span><br><span class="line"># Load rules once and periodically evaluate them according to the global &apos;evaluation_interval&apos;.</span><br><span class="line">rule_files:</span><br><span class="line">  # - &quot;first_rules.yml&quot;</span><br><span class="line">  # - &quot;second_rules.yml&quot;</span><br><span class="line"></span><br><span class="line"># A scrape configuration containing exactly one endpoint to scrape:</span><br><span class="line"># Here it&apos;s Prometheus itself.</span><br><span class="line">scrape_configs:</span><br><span class="line">  # The job name is added as a label `job=&lt;job_name&gt;` to any timeseries scraped from this config.</span><br><span class="line">  - job_name: &apos;prometheus&apos;</span><br><span class="line"></span><br><span class="line">    # metrics_path defaults to &apos;/metrics&apos;</span><br><span class="line">    # scheme defaults to &apos;http&apos;.</span><br><span class="line"></span><br><span class="line">    static_configs:</span><br><span class="line">    - targets: [&apos;localhost:9090&apos;]</span><br></pre></td></tr></table></figure>
-
-<p>prometheus自身本是一个时序数据库，需要创建数据目录</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mkdir data</span><br></pre></td></tr></table></figure>
-
-<p>启动服务</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./prometheus</span><br></pre></td></tr></table></figure>
-
-<p>正常情况下的输出内容如下</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">[root@localhost prometheus-2.11.0-rc.0.linux-amd64]# ./prometheus </span><br><span class="line">level=info ts=2019-07-02T17:45:21.043Z caller=main.go:293 msg=&quot;no time or size retention was set so using the default time retention&quot; duration=15d</span><br><span class="line">level=info ts=2019-07-02T17:45:21.043Z caller=main.go:329 msg=&quot;Starting Prometheus&quot; version=&quot;(version=2.11.0-rc.0, branch=HEAD, revision=5d84b76b819f58a076a2e3cac18b9f4f30a3b308)&quot;</span><br><span class="line">level=info ts=2019-07-02T17:45:21.043Z caller=main.go:330 build_context=&quot;(go=go1.12.6, user=root@ce6c65846bfb, date=20190704-11:28:40)&quot;</span><br><span class="line">level=info ts=2019-07-02T17:45:21.043Z caller=main.go:331 host_details=&quot;(Linux 3.10.0-957.el7.x86_64 #1 SMP Thu Nov 8 23:39:32 UTC 2018 x86_64 localhost.localdomain (none))&quot;</span><br><span class="line">level=info ts=2019-07-02T17:45:21.043Z caller=main.go:332 fd_limits=&quot;(soft=1024, hard=4096)&quot;</span><br><span class="line">level=info ts=2019-07-02T17:45:21.043Z caller=main.go:333 vm_limits=&quot;(soft=unlimited, hard=unlimited)&quot;</span><br><span class="line">level=info ts=2019-07-02T17:45:21.044Z caller=main.go:652 msg=&quot;Starting TSDB ...&quot;</span><br><span class="line">level=info ts=2019-07-02T17:45:21.044Z caller=web.go:448 component=web msg=&quot;Start listening for connections&quot; address=0.0.0.0:9090</span><br><span class="line">level=info ts=2019-07-02T17:45:21.079Z caller=main.go:667 fs_type=XFS_SUPER_MAGIC</span><br><span class="line">level=info ts=2019-07-02T17:45:21.079Z caller=main.go:668 msg=&quot;TSDB started&quot;</span><br><span class="line">level=info ts=2019-07-02T17:45:21.079Z caller=main.go:738 msg=&quot;Loading configuration file&quot; filename=prometheus.yml</span><br><span class="line">level=info ts=2019-07-02T17:45:21.080Z caller=main.go:766 msg=&quot;Completed loading of configuration file&quot; filename=prometheus.yml</span><br><span class="line">level=info ts=2019-07-02T17:45:21.080Z caller=main.go:621 msg=&quot;Server is ready to receive web requests.&quot;</span><br></pre></td></tr></table></figure>
-
-<p>可以查看一下端口，默认的9090端口是已经启动，浏览器可直接访问<code>ip:9090</code>查看prometheus ui</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[root@localhost ~]# ss -tnl</span><br><span class="line">State Recv-Q Send-Q Local Address:Port Peer Address:Port              </span><br><span class="line">LISTEN 0 128 *:22 *:*                  </span><br><span class="line">LISTEN 0 100 127.0.0.1:25 *:*                  </span><br><span class="line">LISTEN 0 128 :::22 :::*                  </span><br><span class="line">LISTEN 0 100 ::1:25 :::*                  </span><br><span class="line">LISTEN 0 128 :::9090 :::*</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li><strong>使用容器安装</strong><br>直接使用docker hub的官方镜像即可，docker启动目录如下<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run -p 9090:9090 -v /etc/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus</span><br></pre></td></tr></table></figure>
-
-</li>
-</ul>
-
-          
+          简介Prometheus受启发于Google的Brogmon监控系统（相似的Kubernetes是从Google的Brog系统演变而来），从2012年开始由前Google工程师在Soundcloud以开源软件的形式进行研发，并且于2015年早期对外发布早期版本。2016年5月继Kubernetes之
+          ...
+          <!--noindex-->
+          <div class="post-button text-center">
+            <a class="btn" href="/2019/07/05/prometheus/#more" rel="contents">
+              Read more &raquo;
+            </a>
+          </div>
+          <!--/noindex-->
         
       
     </div>
