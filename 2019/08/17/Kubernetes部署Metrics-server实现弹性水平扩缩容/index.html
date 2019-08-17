@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="HPA介绍Horizontal Pod Autoscaling （Pod 横向自动扩容，简称 HPA）—HPA跟deployment一样也属于资源对象通过追踪分析 RC 控制的所有目标 Pod 的负载变化情况，来确定是否需要针对性地调整目标Pod的副本数，这是HPA的实现原理  目前，HPA有一下方式作为Pod负载的调度指标： CPUUtilizationPercentage 应用程序自定义的度量">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes部署Metrics-server实现弹性水平扩缩容(HPA)">
+<meta property="og:url" content="http://yoursite.com/2019/08/17/Kubernetes部署Metrics-server实现弹性水平扩缩容/index.html">
+<meta property="og:site_name" content="黄健晨的博客">
+<meta property="og:description" content="HPA介绍Horizontal Pod Autoscaling （Pod 横向自动扩容，简称 HPA）—HPA跟deployment一样也属于资源对象通过追踪分析 RC 控制的所有目标 Pod 的负载变化情况，来确定是否需要针对性地调整目标Pod的副本数，这是HPA的实现原理  目前，HPA有一下方式作为Pod负载的调度指标： CPUUtilizationPercentage 应用程序自定义的度量">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-08-17T13:37:14.448Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Kubernetes部署Metrics-server实现弹性水平扩缩容(HPA)">
+<meta name="twitter:description" content="HPA介绍Horizontal Pod Autoscaling （Pod 横向自动扩容，简称 HPA）—HPA跟deployment一样也属于资源对象通过追踪分析 RC 控制的所有目标 Pod 的负载变化情况，来确定是否需要针对性地调整目标Pod的副本数，这是HPA的实现原理  目前，HPA有一下方式作为Pod负载的调度指标： CPUUtilizationPercentage 应用程序自定义的度量">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2019/08/17/Kubernetes部署Metrics-server实现弹性水平扩缩容/">
+
+
+
+
+
+  <title>Kubernetes部署Metrics-server实现弹性水平扩缩容(HPA) | 黄健晨的博客</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">黄健晨的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">huangjc7.github.io</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/17/Kubernetes部署Metrics-server实现弹性水平扩缩容/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="huangjc7@foxmail.com">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="黄健晨的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Kubernetes部署Metrics-server实现弹性水平扩缩容(HPA)</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2019-08-17T21:30:42+08:00">
+                2019-08-17
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="HPA介绍"><a href="#HPA介绍" class="headerlink" title="HPA介绍"></a>HPA介绍</h1><p>Horizontal Pod Autoscaling （Pod 横向自动扩容，简称 HPA）—HPA跟deployment一样也属于资源对象通过追踪分析 RC 控制的所有目标 Pod 的负载变化情况，来确定是否需要针对性地调整目标Pod的副本数，这是HPA的实现原理</p>
+<ul>
+<li>目前，HPA有一下方式作为Pod负载的调度指标：<ul>
+<li>CPUUtilizationPercentage</li>
+<li>应用程序自定义的度量指标，比如服务在每秒内的相应的请求数（TPS 或 QPS）<h1 id="为什么要部署Metrics-server"><a href="#为什么要部署Metrics-server" class="headerlink" title="为什么要部署Metrics-server"></a>为什么要部署Metrics-server</h1>部署Metrics获取核心资源指标后HPA可根据核心资源指标使用率等进行水平扩缩容<h1 id="kubernetes监控资源指标介绍"><a href="#kubernetes监控资源指标介绍" class="headerlink" title="kubernetes监控资源指标介绍"></a>kubernetes监控资源指标介绍</h1>在kubernetes中有两种资源指标，核心监控指标和监控指标</li>
+</ul>
+</li>
+<li>核心指标流水线：由kubelet、metrics-server以及由API server提供的api组成；CPU累积使用时长、内存实时使用率、pod的资源占用率及磁盘占用率</li>
+<li>监控指标流水线：用于从系统收集各种指标数据提供终端用户、存储系统及HPA，它们包含核心指标及许多非核心指标。非核心指标本身不能被kubernetes所理解，所以需要通过k8s-prometheus-adapter解析，转换成k8s所理解的格式<h1 id="部署Metrics-server"><a href="#部署Metrics-server" class="headerlink" title="部署Metrics-server"></a>部署Metrics-server</h1><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git clone https://github.com/kubernetes-incubator/metrics-server.git</span><br><span class="line">cd metrics-server/deploy/1.8+</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p>配置需要修改以下两处<br>1、vim resource-reader.yaml</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">---</span><br><span class="line">apiVersion: rbac.authorization.k8s.io/v1</span><br><span class="line">kind: ClusterRole</span><br><span class="line">metadata:</span><br><span class="line">  name: system:metrics-server</span><br><span class="line">rules:</span><br><span class="line">- apiGroups:</span><br><span class="line">  - &quot;&quot;</span><br><span class="line">  resources:</span><br><span class="line">  - pods</span><br><span class="line">  - nodes</span><br><span class="line">  - namespaces # 增加此行</span><br><span class="line">  - nodes/stats</span><br><span class="line">  verbs:</span><br><span class="line">  - get</span><br><span class="line">  - list</span><br><span class="line">  - watch</span><br><span class="line">---</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>2.vim /metrics-server-deployment.yaml</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">---</span><br><span class="line">(变更前)</span><br><span class="line">containers:</span><br><span class="line">- name: metrics-server</span><br><span class="line">  image: k8s.gcr.io/metrics-server-amd64:v0.3.1</span><br><span class="line">  imagePullPolicy: Always</span><br><span class="line"></span><br><span class="line">---</span><br><span class="line">(变更后)</span><br><span class="line">containers:</span><br><span class="line">- name: metrics-server</span><br><span class="line">  image: k8s.gcr.io/metrics-server-amd64:v0.3.1</span><br><span class="line">  command:</span><br><span class="line">  - /metrics-server</span><br><span class="line">  - --kubelet-insecure-tls</span><br><span class="line">  - --kubelet-preferred-address-types=InternalIP</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>如果集群内没做DNS或者hosts文件修改则还需要修改<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">kubectl edit configmap coredns -n kube-system</span><br><span class="line">---</span><br><span class="line">apiVersion: v1</span><br><span class="line">data:</span><br><span class="line">  Corefile: |</span><br><span class="line">    .:53 &#123;</span><br><span class="line">        errors</span><br><span class="line">        health</span><br><span class="line">        hosts &#123; # 增加此字段</span><br><span class="line">          10.200.100.216 k8s-m1           </span><br><span class="line">          10.200.100.215 k8s-node1</span><br><span class="line">          10.200.100.214 k8s-node2</span><br><span class="line">          fallthrough</span><br><span class="line">        &#125;</span><br><span class="line">        kubernetes cluster.local in-addr.arpa ip6.arpa &#123;</span><br><span class="line">           pods insecure</span><br><span class="line">           upstream</span><br><span class="line">           fallthrough in-addr.arpa ip6.arpa</span><br><span class="line">        &#125;</span><br><span class="line">        prometheus :9153</span><br><span class="line">        proxy . /etc/resolv.conf</span><br><span class="line">        cache 30</span><br><span class="line">        loop</span><br><span class="line">        reload</span><br><span class="line">        loadbalance</span><br><span class="line">    &#125;</span><br><span class="line">kind: ConfigMap</span><br><span class="line">metadata:</span><br><span class="line">  creationTimestamp: 2018-11-28T10:50:05Z</span><br><span class="line">  name: coredns</span><br><span class="line">  namespace: kube-system</span><br><span class="line">  resourceVersion: &quot;4454220&quot;</span><br><span class="line">  selfLink: /api/v1/namespaces/kube-system/configmaps/coredns</span><br><span class="line">  uid: 5da15457-f2fb-11e8-affd-080027adebb7</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h1 id="验证Metrics"><a href="#验证Metrics" class="headerlink" title="验证Metrics"></a>验证Metrics</h1><ul>
+<li><p>查看是否有新群组添加</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">[root@master01 1.8+]# kubectl api-versions</span><br><span class="line">admissionregistration.k8s.io/v1beta1</span><br><span class="line">apiextensions.k8s.io/v1beta1</span><br><span class="line">apiregistration.k8s.io/v1</span><br><span class="line">apiregistration.k8s.io/v1beta1</span><br><span class="line">apps/v1</span><br><span class="line">apps/v1beta1</span><br><span class="line">apps/v1beta2</span><br><span class="line">authentication.k8s.io/v1</span><br><span class="line">authentication.k8s.io/v1beta1</span><br><span class="line">authorization.k8s.io/v1</span><br><span class="line">authorization.k8s.io/v1beta1</span><br><span class="line">autoscaling/v1</span><br><span class="line">autoscaling/v2beta1</span><br><span class="line">autoscaling/v2beta2</span><br><span class="line">batch/v1</span><br><span class="line">batch/v1beta1</span><br><span class="line">certificates.k8s.io/v1beta1</span><br><span class="line">coordination.k8s.io/v1beta1</span><br><span class="line">events.k8s.io/v1beta1</span><br><span class="line">extensions/v1beta1</span><br><span class="line">metrics.k8s.io/v1beta1</span><br><span class="line">networking.k8s.io/v1</span><br><span class="line">policy/v1beta1</span><br><span class="line">rbac.authorization.k8s.io/v1</span><br><span class="line">rbac.authorization.k8s.io/v1beta1</span><br><span class="line">scheduling.k8s.io/v1beta1</span><br><span class="line">storage.k8s.io/v1</span><br><span class="line">storage.k8s.io/v1beta1</span><br><span class="line">v1</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>测试<br>开启一个代理接口</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl proxy --port=8080</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>测试请求接口</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl http://localhost:8080/apis/metrics.k8s.io/v1beta1/nodes</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p>以上正常就可以使用<code>kubectl top nodes/pods</code> 进行查看资源使用情况</p>
+<h1 id="使用HPA进行水平弹性扩容"><a href="#使用HPA进行水平弹性扩容" class="headerlink" title="使用HPA进行水平弹性扩容"></a>使用HPA进行水平弹性扩容</h1><ul>
+<li><p>部署测试Pod(须定义Pod资源限制)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: Service</span><br><span class="line">metadata:</span><br><span class="line">  creationTimestamp: null</span><br><span class="line">  labels:</span><br><span class="line">    app: myapp</span><br><span class="line">  name: myapp</span><br><span class="line">spec:</span><br><span class="line">  ports:</span><br><span class="line">  - port: 80</span><br><span class="line">    protocol: TCP</span><br><span class="line">    targetPort: 80</span><br><span class="line">  selector:</span><br><span class="line">    app: myapp</span><br><span class="line">status:</span><br><span class="line">  loadBalancer: &#123;&#125;</span><br><span class="line">---</span><br><span class="line">apiVersion: apps/v1</span><br><span class="line">kind: Deployment</span><br><span class="line">metadata:</span><br><span class="line">  creationTimestamp: null</span><br><span class="line">  labels:</span><br><span class="line">    app: myapp</span><br><span class="line">  name: myapp</span><br><span class="line">spec:</span><br><span class="line">  replicas: 2</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:</span><br><span class="line">      app: myapp</span><br><span class="line">  strategy: &#123;&#125;</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      creationTimestamp: null</span><br><span class="line">      labels:</span><br><span class="line">        app: myapp</span><br><span class="line">    spec:</span><br><span class="line">      containers:</span><br><span class="line">      - image: nginx</span><br><span class="line">        name: myapp</span><br><span class="line">        ports:</span><br><span class="line">        - containerPort: 80</span><br><span class="line">        resources:</span><br><span class="line">          limits:</span><br><span class="line">            cpu: 50m</span><br><span class="line">            memory: 265Mi</span><br><span class="line">          requests:</span><br><span class="line">            cpu: 50m</span><br><span class="line">            memory: 256Mi</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>配置HPA扩容策略</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: autoscaling/v1</span><br><span class="line">kind: HorizontalPodAutoscaler</span><br><span class="line">metadata:</span><br><span class="line">  creationTimestamp: null</span><br><span class="line">  name: myapp</span><br><span class="line">spec:</span><br><span class="line">  maxReplicas: 10        #最大扩容数</span><br><span class="line">  minReplicas: 2            #最小扩容数</span><br><span class="line">  scaleTargetRef:</span><br><span class="line">    apiVersion: extensions/v1beta1</span><br><span class="line">    kind: Deployment            #扩缩容控制器</span><br><span class="line">    name: myapp                   #控制器名称</span><br><span class="line">  targetCPUUtilizationPercentage: 60    资源使用率</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>配置完成后我们可以使用<code>kubectl get hpa</code>查看当前的使用率</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[root@master01 ~]# kubectl get hpa</span><br><span class="line">NAME REFERENCE TARGETS MINPODS MAXPODS REPLICAS AGE</span><br><span class="line">myapp Deployment/myapp 0%/60% 2 10 2 33s</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>使用ab命令压测使其资源使用率达到阈值</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">while :; do ab -c 300 -n 500000000 http://192.168.10.14:32000/ ; done</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>再次查看HPA</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[root@master01 ~]# kubectl get hpa</span><br><span class="line">NAME REFERENCE TARGETS MINPODS MAXPODS REPLICAS AGE</span><br><span class="line">myapp Deployment/myapp 100%/60% 2 10 2 14m</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>此时查看pod发现新的pod已经在创建</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">[root@master01 ~]# kubectl get pods</span><br><span class="line">NAME READY STATUS RESTARTS AGE</span><br><span class="line">myapp-54f464cc9f-gwdpf 0/1 ContainerCreating 0 89s</span><br><span class="line">myapp-54f464cc9f-v9rcc 1/1 Running 0 20m</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>至此，通过HPA已经让pod具有弹性扩缩能力，以下是HPA v2配置示例</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: autoscaling/v2beta1</span><br><span class="line">kind: HorizontalPodAutoscaler</span><br><span class="line">metadata:</span><br><span class="line">  name: myapp-hap-v2</span><br><span class="line">spec:</span><br><span class="line">  scaleTargetRef:</span><br><span class="line">    apiVersion: apps/v1</span><br><span class="line">    kind: Deployment</span><br><span class="line">    name: myapp</span><br><span class="line">  minReplicas: 1</span><br><span class="line">  maxReplicas: 10</span><br><span class="line">  metrics:</span><br><span class="line">  - type: Resource            #定义cpu资源进行扩容</span><br><span class="line">    resource:</span><br><span class="line">    name: cpu</span><br><span class="line">    targetAverageUtilization: 55        #使用CPU百分比进行扩容</span><br><span class="line">  - type: Resource                        #定义内存资源进行扩容</span><br><span class="line">    resource:</span><br><span class="line">      name: memory</span><br><span class="line">      targetAverageValue: 50Mi     #内存使用值到达阈值则扩容</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/02/kubernetes-高级调度方式/" rel="next" title="Kubernetes高级调度方式">
+                <i class="fa fa-chevron-left"></i> Kubernetes高级调度方式
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">huangjc7@foxmail.com</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">4</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#HPA介绍"><span class="nav-number">1.</span> <span class="nav-text">HPA介绍</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#为什么要部署Metrics-server"><span class="nav-number">2.</span> <span class="nav-text">为什么要部署Metrics-server</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#kubernetes监控资源指标介绍"><span class="nav-number">3.</span> <span class="nav-text">kubernetes监控资源指标介绍</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#部署Metrics-server"><span class="nav-number">4.</span> <span class="nav-text">部署Metrics-server</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#验证Metrics"><span class="nav-number">5.</span> <span class="nav-text">验证Metrics</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#使用HPA进行水平弹性扩容"><span class="nav-number">6.</span> <span class="nav-text">使用HPA进行水平弹性扩容</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">huangjc7@foxmail.com</span>
+
+  
+</div>
+
+
+  <div class="powered-by">Powered by <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a></div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
