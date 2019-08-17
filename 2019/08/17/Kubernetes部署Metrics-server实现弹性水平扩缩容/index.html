@@ -86,7 +86,7 @@
 <meta property="og:site_name" content="黄健晨的博客">
 <meta property="og:description" content="HPA介绍Horizontal Pod Autoscaling （Pod 横向自动扩容，简称 HPA）—HPA跟deployment一样也属于资源对象通过追踪分析 RC 控制的所有目标 Pod 的负载变化情况，来确定是否需要针对性地调整目标Pod的副本数，这是HPA的实现原理  目前，HPA有一下方式作为Pod负载的调度指标： CPUUtilizationPercentage 应用程序自定义的度量">
 <meta property="og:locale" content="zh-CN">
-<meta property="og:updated_time" content="2019-08-17T13:37:14.448Z">
+<meta property="og:updated_time" content="2019-08-17T13:39:34.363Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes部署Metrics-server实现弹性水平扩缩容(HPA)">
 <meta name="twitter:description" content="HPA介绍Horizontal Pod Autoscaling （Pod 横向自动扩容，简称 HPA）—HPA跟deployment一样也属于资源对象通过追踪分析 RC 控制的所有目标 Pod 的负载变化情况，来确定是否需要针对性地调整目标Pod的副本数，这是HPA的实现原理  目前，HPA有一下方式作为Pod负载的调度指标： CPUUtilizationPercentage 应用程序自定义的度量">
@@ -303,14 +303,18 @@
 <ul>
 <li>目前，HPA有一下方式作为Pod负载的调度指标：<ul>
 <li>CPUUtilizationPercentage</li>
-<li>应用程序自定义的度量指标，比如服务在每秒内的相应的请求数（TPS 或 QPS）<h1 id="为什么要部署Metrics-server"><a href="#为什么要部署Metrics-server" class="headerlink" title="为什么要部署Metrics-server"></a>为什么要部署Metrics-server</h1>部署Metrics获取核心资源指标后HPA可根据核心资源指标使用率等进行水平扩缩容<h1 id="kubernetes监控资源指标介绍"><a href="#kubernetes监控资源指标介绍" class="headerlink" title="kubernetes监控资源指标介绍"></a>kubernetes监控资源指标介绍</h1>在kubernetes中有两种资源指标，核心监控指标和监控指标</li>
+<li>应用程序自定义的度量指标，比如服务在每秒内的相应的请求数（TPS 或 QPS）</li>
 </ul>
 </li>
+</ul>
+<h1 id="为什么要部署Metrics-server"><a href="#为什么要部署Metrics-server" class="headerlink" title="为什么要部署Metrics-server"></a>为什么要部署Metrics-server</h1><p>部署Metrics获取核心资源指标后HPA可根据核心资源指标使用率等进行水平扩缩容</p>
+<h1 id="kubernetes监控资源指标介绍"><a href="#kubernetes监控资源指标介绍" class="headerlink" title="kubernetes监控资源指标介绍"></a>kubernetes监控资源指标介绍</h1><p>在kubernetes中有两种资源指标，核心监控指标和监控指标</p>
+<ul>
 <li>核心指标流水线：由kubelet、metrics-server以及由API server提供的api组成；CPU累积使用时长、内存实时使用率、pod的资源占用率及磁盘占用率</li>
-<li>监控指标流水线：用于从系统收集各种指标数据提供终端用户、存储系统及HPA，它们包含核心指标及许多非核心指标。非核心指标本身不能被kubernetes所理解，所以需要通过k8s-prometheus-adapter解析，转换成k8s所理解的格式<h1 id="部署Metrics-server"><a href="#部署Metrics-server" class="headerlink" title="部署Metrics-server"></a>部署Metrics-server</h1><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git clone https://github.com/kubernetes-incubator/metrics-server.git</span><br><span class="line">cd metrics-server/deploy/1.8+</span><br></pre></td></tr></table></figure>
-
-</li>
+<li>监控指标流水线：用于从系统收集各种指标数据提供终端用户、存储系统及HPA，它们包含核心指标及许多非核心指标。非核心指标本身不能被kubernetes所理解，所以需要通过k8s-prometheus-adapter解析，转换成k8s所理解的格式</li>
 </ul>
+<h1 id="部署Metrics-server"><a href="#部署Metrics-server" class="headerlink" title="部署Metrics-server"></a>部署Metrics-server</h1><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git clone https://github.com/kubernetes-incubator/metrics-server.git</span><br><span class="line">cd metrics-server/deploy/1.8+</span><br></pre></td></tr></table></figure>
+
 <p>配置需要修改以下两处<br>1、vim resource-reader.yaml</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">---</span><br><span class="line">apiVersion: rbac.authorization.k8s.io/v1</span><br><span class="line">kind: ClusterRole</span><br><span class="line">metadata:</span><br><span class="line">  name: system:metrics-server</span><br><span class="line">rules:</span><br><span class="line">- apiGroups:</span><br><span class="line">  - &quot;&quot;</span><br><span class="line">  resources:</span><br><span class="line">  - pods</span><br><span class="line">  - nodes</span><br><span class="line">  - namespaces # 增加此行</span><br><span class="line">  - nodes/stats</span><br><span class="line">  verbs:</span><br><span class="line">  - get</span><br><span class="line">  - list</span><br><span class="line">  - watch</span><br><span class="line">---</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
 
