@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-CN">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="配置系统基础环境环境介绍测试环境将由stor01、stor02、stor03和ceph-admin四个独立的主机组成，其中stor01、stor02和stor03是为Ceph存储集群节点，它们分别作为MON节点和OSD节点，各自拥有专用于存储数据的磁盘设备/dev/vdb和/dev/vdc，操作系统环境均为CentOS 7.6，而ceph-admin主机是为管理节点，用于部署ceph-deploy">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Ceph分布式存储搭建">
+<meta property="og:url" content="http://yoursite.com/2019/11/30/Ceph分布式存储搭建/index.html">
+<meta property="og:site_name" content="黄健晨的博客">
+<meta property="og:description" content="配置系统基础环境环境介绍测试环境将由stor01、stor02、stor03和ceph-admin四个独立的主机组成，其中stor01、stor02和stor03是为Ceph存储集群节点，它们分别作为MON节点和OSD节点，各自拥有专用于存储数据的磁盘设备/dev/vdb和/dev/vdc，操作系统环境均为CentOS 7.6，而ceph-admin主机是为管理节点，用于部署ceph-deploy">
+<meta property="og:locale" content="zh-CN">
+<meta property="og:updated_time" content="2019-11-30T10:52:45.623Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Ceph分布式存储搭建">
+<meta name="twitter:description" content="配置系统基础环境环境介绍测试环境将由stor01、stor02、stor03和ceph-admin四个独立的主机组成，其中stor01、stor02和stor03是为Ceph存储集群节点，它们分别作为MON节点和OSD节点，各自拥有专用于存储数据的磁盘设备/dev/vdb和/dev/vdc，操作系统环境均为CentOS 7.6，而ceph-admin主机是为管理节点，用于部署ceph-deploy">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: 'Author'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2019/11/30/Ceph分布式存储搭建/">
+
+
+
+
+
+  <title>Ceph分布式存储搭建 | 黄健晨的博客</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-CN">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">黄健晨的博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">huangjc7.github.io</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            Home
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            Archives
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/11/30/Ceph分布式存储搭建/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="huangjc7@foxmail.com">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="黄健晨的博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Ceph分布式存储搭建</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+              <time title="Post created" itemprop="dateCreated datePublished" datetime="2019-11-30T18:52:45+08:00">
+                2019-11-30
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="配置系统基础环境"><a href="#配置系统基础环境" class="headerlink" title="配置系统基础环境"></a>配置系统基础环境</h1><h2 id="环境介绍"><a href="#环境介绍" class="headerlink" title="环境介绍"></a>环境介绍</h2><p>测试环境将由stor01、stor02、stor03和ceph-admin四个独立的主机组成，其中stor01、stor02和stor03是为Ceph存储集群节点，它们分别作为MON节点和OSD节点，各自拥有专用于存储数据的磁盘设备/dev/vdb和/dev/vdc，操作系统环境均为CentOS 7.6，而ceph-admin主机是为管理节点，用于部署ceph-deploy</p>
+<table>
+<thead>
+<tr>
+<th>主机地址</th>
+<th>主机名称</th>
+<th>主机角色</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>192.168.10.10</td>
+<td>ceph-admin.com</td>
+<td>admin</td>
+</tr>
+<tr>
+<td>192.168.10.11</td>
+<td>stor01.com</td>
+<td>mon, osd, mgr, mds</td>
+</tr>
+<tr>
+<td>192.168.10.12</td>
+<td>stor02.com</td>
+<td>mon, osd, mgr</td>
+</tr>
+<tr>
+<td>192.168.10.13</td>
+<td>stor03.com</td>
+<td>mon, osd, rgw</td>
+</tr>
+</tbody></table>
+<p>此外，各主机需要预设的系统环境如下：</p>
+<ul>
+<li>借助于NTP服务设定各节点时间精确同步；</li>
+<li>通过DNS完成各节点的主机名称解析，本次测试使用hosts作为名称解析；</li>
+<li>关闭各节点的iptables或firewalld服务，并确保它们被禁止随系统引导过程启动；</li>
+<li>各节点禁用SELinux；</li>
+<li>设定时钟同步 </li>
+</ul>
+<h2 id="主机名称解析"><a href="#主机名称解析" class="headerlink" title="主机名称解析"></a>主机名称解析</h2><p>出于简化配置步骤的目的，本测试环境使用hosts文件进行各节点名称解析，文件内容如下所示：</p>
+<p>192.168.10.11  stor01 mon01 mds01<br>192.168.10.12 stor02 mon02 mgr01<br>192.168.10.13 stor03 mon03 mgr02<br>192.168.10.10 ceph-admin</p>
+<h2 id="关闭iptables或firewalld服务"><a href="#关闭iptables或firewalld服务" class="headerlink" title="关闭iptables或firewalld服务"></a>关闭iptables或firewalld服务</h2><p>在CentOS7上，iptables或firewalld服务通常只会安装并启动一种，在不确认具体启动状态的前提下，这里通过同时关闭并禁用二者即可简单达到设定目标。</p>
+<pre><code>~]# systemctl stop firewalld.service
+~]# systemctl stop iptables.service
+~]# systemctl disable firewalld.service
+~]# systemctl disable iptables.service</code></pre><h2 id="关闭并禁用SELinux"><a href="#关闭并禁用SELinux" class="headerlink" title="关闭并禁用SELinux"></a>关闭并禁用SELinux</h2><p>若当前启用了SELinux，则需要编辑/etc/sysconfig/selinux文件,禁用SELinux，并临时设置其当前状态为permissive：</p>
+<pre><code>~]# sed -i &apos;s@^\(SELINUX=\).*@\1disabled@&apos; /etc/sysconfig/selinux
+~]# setenforce 0</code></pre><h1 id="准备部署Ceph集群"><a href="#准备部署Ceph集群" class="headerlink" title="准备部署Ceph集群"></a>准备部署Ceph集群</h1><h2 id="准备yum仓库配置文件"><a href="#准备yum仓库配置文件" class="headerlink" title="准备yum仓库配置文件"></a>准备yum仓库配置文件</h2><p>Ceph官方的仓库路径为<a href="http://download.ceph.com/，目前主流版本相关的程序包都在提供，包括kraken、luminous和mimic等，它们分别位于rpm-mimic等一类的目录中。直接安装程序包即可生成相关的yum仓库相关的配置文件，程序包位于相关版本的noarch目录下，例如rpm-mimic/el7/noarch/ceph-release-1-1.el7.noarch.rpm是为负责生成适用于部署mimic版本Ceph的yum仓库配置文件，因此直接在线安装此程序包，也能直接生成yum仓库的相关配置。" target="_blank" rel="noopener">http://download.ceph.com/，目前主流版本相关的程序包都在提供，包括kraken、luminous和mimic等，它们分别位于rpm-mimic等一类的目录中。直接安装程序包即可生成相关的yum仓库相关的配置文件，程序包位于相关版本的noarch目录下，例如rpm-mimic/el7/noarch/ceph-release-1-1.el7.noarch.rpm是为负责生成适用于部署mimic版本Ceph的yum仓库配置文件，因此直接在线安装此程序包，也能直接生成yum仓库的相关配置。</a></p>
+<p>在ceph-admin节点上，使用如下命令即可安装生成mimic版本相关的yum仓库配置。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">~]# rpm -ivh https://mirrors.aliyun.com/ceph/rpm-mimic/el7/noarch/ceph-release-1-1.el7.noarch.rpm</span><br></pre></td></tr></table></figure>
+
+<h2 id="创建部署Ceph的特定用户账号"><a href="#创建部署Ceph的特定用户账号" class="headerlink" title="创建部署Ceph的特定用户账号"></a>创建部署Ceph的特定用户账号</h2><p>部署工具ceph-deploy 必须以普通用户登录到Ceph集群的各目标节点，且此用户需要拥有无密码使用sudo命令的权限，以便在安装软件及生成配置文件的过程中无需中断配置过程。不过，较新版的ceph-deploy也支持用 ”–username“ 选项提供可无密码使用sudo命令的用户名（包括 root ，但不建议这样做）。</p>
+<p>另外，使用”ceph-deploy –username {username} “命令时，指定的用户需要能够通过SSH协议自动认证并连接到各Ceph节点，以免ceph-deploy命令在配置中途需要用户输入密码。</p>
+<h3 id="在各Ceph各节点创建新用户"><a href="#在各Ceph各节点创建新用户" class="headerlink" title="在各Ceph各节点创建新用户"></a>在各Ceph各节点创建新用户</h3><p>首先需要在各节点以管理员的身份创建一个专用于ceph-deploy的特定用户账号，例如cephadm（建议不要使用ceph），并为其设置认证密码：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">~]# useradd cephadm</span><br><span class="line">~]# echo &quot;password&quot; | passwd --stdin cephadm</span><br></pre></td></tr></table></figure>
+
+<p>而后，确保这些节点上新创建的用户cephadm都有无密码运行sudo命令的权限。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">~]# echo &quot;cephadm ALL = (root) NOPASSWD:ALL&quot; | sudo tee /etc/sudoers.d/cephadm</span><br><span class="line">~]# chmod 0440 /etc/sudoers.d/cephadm</span><br></pre></td></tr></table></figure>
+
+<h3 id="配置用户基于密钥的ssh认证"><a href="#配置用户基于密钥的ssh认证" class="headerlink" title="配置用户基于密钥的ssh认证"></a>配置用户基于密钥的ssh认证</h3><p>ceph-deploy命令不支持运行中途的密码输入，因此，必须在管理节点(admin)上生成SSH密钥并将其公钥分发至Ceph集群的各节点上。下面直接以cephadm用户的身份生成SSH密钥对：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">~]$ ssh-keygen -t rsa -P &quot;&quot;</span><br></pre></td></tr></table></figure>
+
+<p>而后即可把公钥拷贝到各Ceph节点：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">~]$ ssh-copy-id -i .ssh/id_rsa.pub cephadm@stor01.com</span><br><span class="line">~]$ ssh-copy-id -i .ssh/id_rsa.pub cephadm@stor02.com</span><br><span class="line">~]$ ssh-copy-id -i .ssh/id_rsa.pub cephadm@stor03.com</span><br></pre></td></tr></table></figure>
+
+<p>另外，为了后续操作之便，建议修改管理节点上cephadm用户的 ~/.ssh/config 文件，设定其访问Ceph集群各节点时默认使用的用户名为，从而避免每次执行ceph-deploy命令时都要指定 使用”–username“选项设置使用的用户名。文件内容示例如下所示：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">Host stor01</span><br><span class="line">   Hostname stor01</span><br><span class="line">   User cephadm</span><br><span class="line">Host stor02</span><br><span class="line">   Hostname stor02</span><br><span class="line">   User cephadm</span><br><span class="line">Host stor03</span><br><span class="line">   Hostname stor03</span><br><span class="line">   User cephadm</span><br></pre></td></tr></table></figure>
+
+<h2 id="在管理节点安装ceph-deploy"><a href="#在管理节点安装ceph-deploy" class="headerlink" title="在管理节点安装ceph-deploy"></a>在管理节点安装ceph-deploy</h2><p>Ceph存储集群的部署的过程可通过管理节点使用ceph-deploy全程进行，这里首先在管理节点安装ceph-deploy及其依赖到的程序包：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@ceph-admin ~]# yum update</span><br><span class="line">[root@ceph-admin ~]# yum install ceph-deploy python-setuptools python2-subprocess32</span><br></pre></td></tr></table></figure>
+
+<h1 id="部署RADOS存储集群"><a href="#部署RADOS存储集群" class="headerlink" title="部署RADOS存储集群"></a>部署RADOS存储集群</h1><h2 id="初始化RADOS集群"><a href="#初始化RADOS集群" class="headerlink" title="初始化RADOS集群"></a>初始化RADOS集群</h2><ol>
+<li>首先在管理节点上以cephadm用户创建集群相关的配置文件目录：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">~]$ mkdir ceph-cluster</span><br><span class="line">~]$ cd ceph-cluster</span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li>初始化第一个MON节点，准备创建集群：</li>
+</ol>
+<p>初始化第一个MON节点的命令格式为”ceph-deploy new {initial-monitor-node(s)}“，本示例中，stor01即为第一个MON节点名称，其名称必须与节点当前实际使用的主机名称保存一致。运行如下命令即可生成初始配置：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy new stor01</span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li><p>编辑生成ceph.conf配置文件，在[global]配置段中设置Ceph集群面向客户端通信时使用的IP地址所在的网络，即公网网络地址：</p>
+<p> public network = 192.168.10.0/24</p>
+</li>
+<li><p>安装Ceph集群</p>
+</li>
+</ol>
+<p>ceph-deploy命令能够以远程的方式连入Ceph集群各节点完成程序包安装等操作，命令格式如下：</p>
+<pre><code>ceph-deploy install {ceph-node} [{ceph-node} ...]</code></pre><p>因此，若要将stor01、stor02和stor03配置为Ceph集群节点，则执行如下命令即可：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy install stor01 stor02 stor03</span><br></pre></td></tr></table></figure>
+
+<p><em>提示：若需要在集群各节点独立安装ceph程序包，其方法如下</em>：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">~]#  yum install -y https://download.ceph.com/rpm-mimic/el7/noarch/ceph-release-1-0.el7.noarch.rpm</span><br><span class="line">~]# yum install ceph ceph-radosgw</span><br></pre></td></tr></table></figure>
+
+<ol start="5">
+<li>配置初始MON节点，并收集所有密钥：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy mon create-initial</span><br></pre></td></tr></table></figure>
+
+<ol start="6">
+<li>把配置文件和admin密钥拷贝Ceph集群各节点，以免得每次执行”ceph“命令行时不得不明确指定MON节点地址和ceph.client.admin.keyring：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy admin stor01 stor02 stor03</span><br></pre></td></tr></table></figure>
+
+<p>而后在Ceph集群中需要运行ceph命令的的节点上（或所有节点上）以root用户的身份设定用户cephadm能够读取/etc/ceph/ceph.client.admin.keyring文件：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">~]$ setfacl -m u:cephadm:r /etc/ceph/ceph.client.admin.keyring</span><br></pre></td></tr></table></figure>
+
+<ol start="7">
+<li>配置Manager节点，启动ceph-mgr进程（仅Luminious+版本）：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy mgr create stor01</span><br></pre></td></tr></table></figure>
+
+<ol start="8">
+<li>在Ceph集群内的节点上以cephadm用户的身份运行如下命令，测试集群的健康状态：</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">[cephadm@stor01 ~]$ ceph health</span><br><span class="line">HEALTH_OK</span><br><span class="line">[cephadm@stor01 ~]$ ceph -s</span><br><span class="line">  cluster:</span><br><span class="line">    id:     fc5b806d-3b43-41f1-974a-c07468b9d9ff</span><br><span class="line">    health: HEALTH_OK</span><br><span class="line"> </span><br><span class="line">  services:</span><br><span class="line">    mon: 1 daemons, quorum stor01</span><br><span class="line">    mgr: stor01(active)</span><br><span class="line">    osd: 0 osds: 0 up, 0 in</span><br><span class="line"> </span><br><span class="line">  data:</span><br><span class="line">    pools:   0 pools, 0 pgs</span><br><span class="line">    objects: 0  objects, 0 B</span><br><span class="line">    usage:   0 B used, 0 B / 0 B avail</span><br><span class="line">    pgs:</span><br></pre></td></tr></table></figure>
+
+<h1 id="向RADOS集群添加OSD"><a href="#向RADOS集群添加OSD" class="headerlink" title="向RADOS集群添加OSD"></a>向RADOS集群添加OSD</h1><h2 id="列出并擦净磁盘"><a href="#列出并擦净磁盘" class="headerlink" title="列出并擦净磁盘"></a>列出并擦净磁盘</h2><p>“ceph-deploy disk”命令可以检查并列出OSD节点上所有可用的磁盘的相关信息，vmware需再次添加一块空闲磁盘：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy disk list stor01 stor02 stor03</span><br></pre></td></tr></table></figure>
+
+<p>而后，在管理节点上使用ceph-deploy命令擦除计划专用于OSD磁盘上的所有分区表和数据以便用于OSD，命令格式为”ceph-deploy disk zap {osd-server-name} {disk-name}“，需要注意的是此步会清除目标设备上的所有数据。下面分别擦净stor01、stor02和stor03上用于OSD的一个磁盘设备vdb：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy disk zap stor01 /dev/vdb</span><br><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy disk zap stor02 /dev/vdb</span><br><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy disk zap stor03 /dev/vdb</span><br></pre></td></tr></table></figure>
+
+<p><em>提示：若设备上此前有数据，则可能需要在相应节点上以root用户使用“ceph-volume lvm zap –destroy {DEVICE}”命令进行；</em></p>
+<h2 id="添加OSD"><a href="#添加OSD" class="headerlink" title="添加OSD"></a>添加OSD</h2><p>早期版本的ceph-deploy命令支持在将添加OSD的过程分为两个步骤：准备OSD和激活OSD，但新版本中，此种操作方式已经被废除，添加OSD的步骤只能由命令”ceph-deploy osd create {node} –data {data-disk}“一次完成，默认使用的存储引擎为bluestore。</p>
+<p>如下命令即可分别把stor01、stor02和stor03上的设备vdb添加为OSD：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy osd create stor01 --data /dev/vdb</span><br><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy osd create stor02 --data /dev/vdb</span><br><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy osd create stor03 --data /dev/vdb</span><br></pre></td></tr></table></figure>
+
+<p>而后可使用”ceph-deploy osd list”命令列出指定节点上的OSD：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy osd list stor01 stor02 stor03</span><br></pre></td></tr></table></figure>
+
+<p>事实上，管理员也可以使用ceph命令查看OSD的相关信息：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">~]$ ceph osd stat</span><br><span class="line">3 osds: 3 up, 3 in; epoch: e15</span><br></pre></td></tr></table></figure>
+
+<p>或者使用如下命令了解相关的信息：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">~]$ ceph osd dump</span><br><span class="line">~]$ ceph osd ls</span><br></pre></td></tr></table></figure>
+
+<h1 id="从RADOS集群中移除OSD的方法"><a href="#从RADOS集群中移除OSD的方法" class="headerlink" title="从RADOS集群中移除OSD的方法"></a>从RADOS集群中移除OSD的方法</h1><p>Ceph集群中的一个OSD通常对应于一个设备，且运行于专用的守护进程。在某OSD设备出现故障，或管理员出于管理之需确实要移除特定的OSD设备时，需要先停止相关的守护进程，而后再进行移除操作。对于Luminous及其之后的版本来说，停止和移除命令的格式分别如下所示：</p>
+<ol>
+<li>停用设备：ceph osd out {osd-num}</li>
+<li>停止进程：sudo systemctl stop ceph-osd@{osd-num}</li>
+<li>移除设备：ceph osd purge {id} –yes-i-really-mean-it</li>
+</ol>
+<p>若类似如下的OSD的配置信息存在于ceph.conf配置文件中，管理员在删除OSD之后手动将其删除。</p>
+<blockquote>
+<p>[osd.1]<br>        host = {hostname}</p>
+</blockquote>
+<p>不过，对于Luminous之前的版本来说，管理员需要依次手动执行如下步骤删除OSD设备：</p>
+<ol>
+<li>于CRUSH运行图中移除设备：ceph osd crush remove {name}</li>
+<li>移除OSD的认证key：ceph auth del osd.{osd-num}</li>
+<li>最后移除OSD设备：ceph osd rm {osd-num}</li>
+</ol>
+<h2 id="测试上传-下载数据对象"><a href="#测试上传-下载数据对象" class="headerlink" title="测试上传/下载数据对象"></a>测试上传/下载数据对象</h2><p>存取数据时，客户端必须首先连接至RADOS集群上某存储池，而后根据对象名称由相关的CRUSH规则完成数据对象寻址。于是，为了测试集群的数据存取功能，这里首先创建一个用于测试的存储池mypool，并设定其PG数量为16个。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">~]$ ceph osd pool create mypool 16</span><br><span class="line">pool &apos;mypool&apos; created</span><br></pre></td></tr></table></figure>
+
+<p>而后即可将测试文件上传至存储池中，例如下面的“rados put”命令将/etc/issue文件上传至mypool存储池，对象名称依然保留为文件名issue，而“rados ls”命令则可以列出指定存储池中的数据对象。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">~]$ rados put issue /etc/issue --pool=mypool</span><br><span class="line">~]$ rados ls --pool=mypool</span><br><span class="line">issue</span><br></pre></td></tr></table></figure>
+
+<p>而“ceph osd map”命令可以获取到存储池中数据对象的具体位置信息：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">~]$ ceph osd map mypool issue</span><br><span class="line">osdmap e26 pool &apos;mypool&apos; (1) object &apos;issue&apos; -&gt; pg 1.651f88da (1.a) -&gt; up ([2,1,0], p2) acting ([2,1,0], p2)</span><br></pre></td></tr></table></figure>
+
+<p>删除数据对象，“rados rm”命令是较为常用的一种方式：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">~]$ rados rm issue --pool=mypool</span><br></pre></td></tr></table></figure>
+
+<p>删除存储池命令存在数据丢失的风险，Ceph于是默认禁止此类操作。管理员需要在ceph.conf配置文件中启用支持删除存储池的操作后，方可使用类似如下命令删除存储池。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">~]$ ceph osd pool rm mypool mypool --yes-i-really-really-mean-it</span><br></pre></td></tr></table></figure>
+
+<h1 id="扩展Ceph集群"><a href="#扩展Ceph集群" class="headerlink" title="扩展Ceph集群"></a>扩展Ceph集群</h1><h2 id="扩展监视器节点"><a href="#扩展监视器节点" class="headerlink" title="扩展监视器节点"></a>扩展监视器节点</h2><p>Ceph存储集群需要至少运行一个Ceph Monitor和一个Ceph Manager，生产环境中，为了实现高可用性，Ceph存储集群通常运行多个监视器，以免单监视器整个存储集群崩溃。Ceph使用Paxos算法，该算法需要半数以上的监视器（大于n/2，其中n为总监视器数量）才能形成法定人数。尽管此非必需，但奇数个监视器往往更好。</p>
+<p>“ceph-deploy mon add {ceph-nodes}”命令可以一次添加一个监视器节点到集群中。例如，下面的命令可以将集群中的stor02和stor03也运行为监视器节点：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy mon add stor02</span><br><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy mon add stor03</span><br></pre></td></tr></table></figure>
+
+<p>设置完成后，可以在ceph客户端上查看监视器及法定人数的相关状态：</p>
+<p>~]$ ceph quorum_status –format json-pretty</p>
+<p>{<br>    “election_epoch”: 12,<br>    “quorum”: [<br>        0,<br>        1,<br>        2<br>    ],<br>    “quorum_names”: [<br>        “stor01”,<br>        “stor02”,<br>        “stor03”<br>    ],<br>    “quorum_leader_name”: “stor01”,<br>    “monmap”: {<br>        “epoch”: 3,<br>        ……<br>        },<br>        “mons”: [<br>            {<br>                “rank”: 0,<br>                “name”: “stor01”,<br>                “addr”: “172.20.0.55:6789/0”,<br>                “public_addr”: “172.20.0.55:6789/0”<br>            },<br>            {<br>                “rank”: 1,<br>                “name”: “stor02”,<br>                “addr”: “172.20.0.56:6789/0”,<br>                “public_addr”: “172.20.0.56:6789/0”<br>            },<br>            {<br>                “rank”: 2,<br>                “name”: “stor03”,<br>                “addr”: “172.20.0.57:6789/0”,<br>                “public_addr”: “172.20.0.57:6789/0”<br>            }<br>        ]<br>    }<br>}</p>
+<h2 id="扩展Manager节点"><a href="#扩展Manager节点" class="headerlink" title="扩展Manager节点"></a>扩展Manager节点</h2><p>Ceph Manager守护进程以“Active/Standby”模式运行，部署其它ceph-mgr守护程序可确保在Active节点或其上的ceph-mgr守护进程故障时，其中的一个Standby实例可以在不中断服务的情况下接管其任务。</p>
+<p>“ceph-deploy mgr create {new-manager-nodes}”命令可以一次添加多个Manager节点。下面的命令可以将stor02节点作为备用的Manager运行：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy mgr create stor02</span><br></pre></td></tr></table></figure>
+
+<p>添加完成后，“ceph -s”命令的services一段中会输出相关信息：</p>
+<p> ~]$ ceph -s<br>  cluster:<br>    id:     fc5b806d-3b43-41f1-974a-c07468b9d9ff<br>    health: HEALTH_OK</p>
+<p>  services:<br>    mon: 3 daemons, quorum stor01,stor02,stor03<br>    <strong>mgr: stor01(active), standbys: stor02</strong><br>    osd: 3 osds: 3 up, 3 in</p>
+<p>……</p>
+<h1 id="Ceph存储集群的访问接口"><a href="#Ceph存储集群的访问接口" class="headerlink" title="Ceph存储集群的访问接口"></a>Ceph存储集群的访问接口</h1><h2 id="Ceph块设备接口（RBD）"><a href="#Ceph块设备接口（RBD）" class="headerlink" title="Ceph块设备接口（RBD）"></a>Ceph块设备接口（RBD）</h2><p>Ceph块设备，也称为RADOS块设备（简称RBD），是一种基于RADOS存储系统支持超配（thin-provisioned）、可伸缩的条带化数据存储系统，它通过librbd库与OSD进行交互。RBD为KVM等虚拟化技术和云OS（如OpenStack和CloudStack）提供高性能和无限可扩展性的存储后端，这些系统依赖于libvirt和QEMU实用程序与RBD进行集成。</p>
+<p>客户端基于librbd库即可将RADOS存储集群用作块设备，不过，用于rbd的存储池需要事先启用rbd功能并进行初始化。例如，下面的命令创建一个名为rbddata的存储池，在启用rbd功能后对其进行初始化：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">~]$ ceph osd pool create rbddata 64</span><br><span class="line">~]$ ceph osd pool application enable rbddata rbd</span><br><span class="line">~]$ rbd pool init -p rbddata</span><br></pre></td></tr></table></figure>
+
+<p>不过，rbd存储池并不能直接用于块设备，而是需要事先在其中按需创建映像（image），并把映像文件作为块设备使用。rbd命令可用于创建、查看及删除块设备相在的映像（image），以及克隆映像、创建快照、将映像回滚到快照和查看快照等管理操作。例如，下面的命令能够创建一个名为img1的映像：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">~]$ rbd create img1 --size 1024 --pool rbddata</span><br></pre></td></tr></table></figure>
+
+<p>映像的相关的信息则可以使用“rbd<br>~]$ rbd –image img1 –pool rbddata info<br>rbd image ‘img1’:<br>        size 1 GiB in 256 objects<br>        order 22 (4 MiB objects)<br>        id: 11616b8b4567<br>        block_name_prefix: rbd_data.11616b8b4567info”命令获取：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">format: 2</span><br><span class="line">features: layering, exclusive-lock, object-map, fast-diff, deep-flatten</span><br><span class="line">op_features:</span><br><span class="line">flags:</span><br><span class="line">create_timestamp: Tue Dec 11 17:20:23 2018</span><br></pre></td></tr></table></figure>
+
+<p>在客户端主机上，用户通过内核级的rbd驱动识别相关的设备，即可对其进行分区、创建文件系统并挂载使用。</p>
+<h2 id="启用radosgw接口"><a href="#启用radosgw接口" class="headerlink" title="启用radosgw接口"></a>启用radosgw接口</h2><p>RGW并非必须的接口，仅在需要用到与S3和Swift兼容的RESTful接口时才需要部署RGW实例，相关的命令为“ceph-deploy rgw create {gateway-node}”。例如，下面的命令用于把stor03部署为rgw主机：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy rgw create stor03</span><br></pre></td></tr></table></figure>
+
+<p>添加完成后，“ceph -s”命令的services一段中会输出相关信息：</p>
+<p>~]$ ceph -s<br>  cluster:<br>    id:     fc5b806d-3b43-41f1-974a-c07468b9d9ff<br>    health: HEALTH_OK</p>
+<p>  services:<br>    mon: 3 daemons, quorum stor01,stor02,stor03<br>    mgr: stor01(active), standbys: stor02<br>    osd: 3 osds: 3 up, 3 in<br>    <strong>rgw: 1 daemon active</strong></p>
+<p>……</p>
+<p>默认情况下，RGW实例监听于TCP协议的7480端口7480，需要算定时，可以通过在运行RGW的节点上编辑其主配置文件ceph.conf进行修改，相关参数如下所示：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[client]</span><br><span class="line">rgw_frontends = &quot;civetweb port=8080&quot;</span><br></pre></td></tr></table></figure>
+
+<p>而后需要重启相关的服务，命令格式为“systemctl restart ceph-radosgw@rgw.{node-name}”，例如重启stor03上的RGW，可以以root用户运行如下命令：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">~]# systemctl status ceph-radosgw@rgw.stor03</span><br></pre></td></tr></table></figure>
+
+<p>RGW会在rados集群上生成包括如下存储池的一系列存储池：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">~]$ ceph osd pool ls</span><br><span class="line">.rgw.root</span><br><span class="line">default.rgw.control</span><br><span class="line">default.rgw.meta</span><br><span class="line">default.rgw.log</span><br></pre></td></tr></table></figure>
+
+<p>RGW提供的是REST接口，客户端通过http与其进行交互，完成数据的增删改查等管理操作。</p>
+<h2 id="启用文件系统（CephFS）接口"><a href="#启用文件系统（CephFS）接口" class="headerlink" title="启用文件系统（CephFS）接口"></a>启用文件系统（CephFS）接口</h2><p>CephFS需要至少运行一个元数据服务器（MDS）守护进程（ceph-mds），此进程管理与CephFS上存储的文件相关的元数据，并协调对Ceph存储集群的访问。因此，若要使用CephFS接口，需要在存储集群中至少部署一个MDS实例。“ceph-deploy mds create {ceph-node}”命令可以完成此功能，例如，在stor01上启用MDS：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[cephadm@ceph-admin ceph-cluster]$ ceph-deploy mds create stor01</span><br></pre></td></tr></table></figure>
+
+<p>查看MDS的相关状态可以发现，刚添加的MDS处于Standby模式：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">~]$ ceph mds stat</span><br><span class="line">, 1 up:standby</span><br></pre></td></tr></table></figure>
+
+<p>使用CephFS之前需要事先于集群中创建一个文件系统，并为其分别指定元数据和数据相关的存储池。下面创建一个名为cephfs的文件系统用于测试，它使用cephfs-metadata为元数据存储池，使用cephfs-data为数据存储池：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">~]$ ceph osd pool create cephfs-metadata 64</span><br><span class="line">~]$ ceph osd pool create cephfs-data 64</span><br><span class="line">~]$ ceph fs new cephfs cephfs-metadata cephfs-data</span><br></pre></td></tr></table></figure>
+
+<p>而后即可使用如下命令“ceph fs status <fsname>”查看文件系统的相关状态，例如：</fsname></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">~]$ ceph fs status cephfs</span><br></pre></td></tr></table></figure>
+
+<p>此时，MDS的状态已经发生了改变：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"> ~]$ ceph mds stat</span><br><span class="line">cephfs-1/1/1 up  &#123;0=stor01=up:active&#125;</span><br></pre></td></tr></table></figure>
+
+<p>随后，客户端通过内核中的cephfs文件系统接口即可挂载使用cephfs文件系统，或者通过FUSE接口与文件系统进行交互。</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/11/27/Kubernetes使用CephRBD存储/" rel="next" title="Kubernetes使用Ceph RBD存储">
+                <i class="fa fa-chevron-left"></i> Kubernetes使用Ceph RBD存储
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">huangjc7@foxmail.com</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-name">posts</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#配置系统基础环境"><span class="nav-number">1.</span> <span class="nav-text">配置系统基础环境</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#环境介绍"><span class="nav-number">1.1.</span> <span class="nav-text">环境介绍</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主机名称解析"><span class="nav-number">1.2.</span> <span class="nav-text">主机名称解析</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#关闭iptables或firewalld服务"><span class="nav-number">1.3.</span> <span class="nav-text">关闭iptables或firewalld服务</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#关闭并禁用SELinux"><span class="nav-number">1.4.</span> <span class="nav-text">关闭并禁用SELinux</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#准备部署Ceph集群"><span class="nav-number">2.</span> <span class="nav-text">准备部署Ceph集群</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#准备yum仓库配置文件"><span class="nav-number">2.1.</span> <span class="nav-text">准备yum仓库配置文件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#创建部署Ceph的特定用户账号"><span class="nav-number">2.2.</span> <span class="nav-text">创建部署Ceph的特定用户账号</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#在各Ceph各节点创建新用户"><span class="nav-number">2.2.1.</span> <span class="nav-text">在各Ceph各节点创建新用户</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#配置用户基于密钥的ssh认证"><span class="nav-number">2.2.2.</span> <span class="nav-text">配置用户基于密钥的ssh认证</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#在管理节点安装ceph-deploy"><span class="nav-number">2.3.</span> <span class="nav-text">在管理节点安装ceph-deploy</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#部署RADOS存储集群"><span class="nav-number">3.</span> <span class="nav-text">部署RADOS存储集群</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#初始化RADOS集群"><span class="nav-number">3.1.</span> <span class="nav-text">初始化RADOS集群</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#向RADOS集群添加OSD"><span class="nav-number">4.</span> <span class="nav-text">向RADOS集群添加OSD</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#列出并擦净磁盘"><span class="nav-number">4.1.</span> <span class="nav-text">列出并擦净磁盘</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#添加OSD"><span class="nav-number">4.2.</span> <span class="nav-text">添加OSD</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#从RADOS集群中移除OSD的方法"><span class="nav-number">5.</span> <span class="nav-text">从RADOS集群中移除OSD的方法</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#测试上传-下载数据对象"><span class="nav-number">5.1.</span> <span class="nav-text">测试上传/下载数据对象</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#扩展Ceph集群"><span class="nav-number">6.</span> <span class="nav-text">扩展Ceph集群</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#扩展监视器节点"><span class="nav-number">6.1.</span> <span class="nav-text">扩展监视器节点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#扩展Manager节点"><span class="nav-number">6.2.</span> <span class="nav-text">扩展Manager节点</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Ceph存储集群的访问接口"><span class="nav-number">7.</span> <span class="nav-text">Ceph存储集群的访问接口</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Ceph块设备接口（RBD）"><span class="nav-number">7.1.</span> <span class="nav-text">Ceph块设备接口（RBD）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#启用radosgw接口"><span class="nav-number">7.2.</span> <span class="nav-text">启用radosgw接口</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#启用文件系统（CephFS）接口"><span class="nav-number">7.3.</span> <span class="nav-text">启用文件系统（CephFS）接口</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">huangjc7@foxmail.com</span>
+
+  
+</div>
+
+
+  <div class="powered-by">Powered by <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a></div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
